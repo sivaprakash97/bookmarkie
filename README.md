@@ -10,7 +10,7 @@ Bookmarkie is a Chrome extension with a full-page search app. It collects your b
 | Chrome Reading List | ✅ Synced live |
 | X / Twitter | 🔜 Next milestone |
 | LinkedIn, Instagram | 🗓 Planned |
-| AI search (Claude), color search | 🗓 Planned |
+| Smart search with free on-device AI (Chrome's built-in Gemini Nano), color search | 🗓 Planned. Claude is an optional upgrade if you add your own key |
 
 See [`docs/PLAN.md`](docs/PLAN.md) for the full design and roadmap.
 

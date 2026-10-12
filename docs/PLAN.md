@@ -7,7 +7,7 @@ The goal is a Chrome extension with a full-page app that:
 1. **Collects bookmarks from all four sources automatically.** The user never exports or imports anything.
 2. **Finds a bookmark from a loose description**: keywords, natural language, source, date or color ("the blue chart from LinkedIn last spring").
 
-Agreed with the user: Chrome extension plus full-page app; data stays on the device; Claude API (user's own key) for smart search; TypeScript + React + Vite, Manifest V3.
+Agreed with the user: Chrome extension plus full-page app; data stays on the device; free on-device AI by default (Chrome's built-in Gemini Nano), with Claude (user's own key) as an optional upgrade; TypeScript + React + Vite, Manifest V3.
 
 **Main constraint.** Only Chrome has a bookmarks API. The other three platforms have no public API for a user's saved items, and most social saves happen on phones. "Frictionless" therefore needs two capture paths:
 - **(a) Passive:** watch the user's own logged-in desktop session and record saves as they happen.
@@ -41,6 +41,24 @@ test/fixtures/{x,instagram,linkedin,pages}/  recorded, sanitized JSON/HTML
 - **Host permissions:** x.com, twitter.com, *.twimg.com, instagram.com, *.cdninstagram.com, *.fbcdn.net, linkedin.com, *.licdn.com, api.anthropic.com.
 - **Optional, requested in onboarding:** `<all_urls>` ("read bookmarked pages for better search"), `idle`.
 - **CSP:** `script-src 'self' 'wasm-unsafe-eval'`. The ONNX runtime and model weights ship inside the extension; nothing is loaded from a CDN.
+
+## AI providers: free by default, Claude optional (revision)
+The user wants to avoid paying for AI. Every AI step goes through one `AiProvider` interface (`src/core/ai/`), and the free on-device providers are the default:
+
+| Job | Default (free, on-device) | Optional upgrade |
+| --- | --- | --- |
+| Meaning-based search | Bundled `all-MiniLM-L6-v2` embeddings (Transformers.js). Already in the plan and already free. | — |
+| Color search | Local OKLab k-means on thumbnails. Already free. | — |
+| Tags, summary, search phrases per bookmark | **Chrome built-in AI (Gemini Nano, Prompt API `LanguageModel`)** with a JSON `responseConstraint` schema, run by the offscreen engine. | Claude Haiku (user's key) |
+| Describing images ("the blue chart") | Gemini Nano image input, used only if `LanguageModel.availability({expectedInputs:[{type:'image'}]})` says it's available | Claude Haiku vision |
+| Query planner ("pricing post from linkedin last spring") | Local `queryParse.ts` (already built) + Gemini Nano for rewrites/synonyms | Claude |
+| Rerank top 30 | Skipped (RRF of keyword + vector is the final order) | Claude |
+
+- **Gemini Nano limits:** needs Chrome desktop (Windows/macOS/Linux/ChromeOS Plus, not phones), about 22 GB free disk for a one-time model download, and either a GPU with more than 4 GB VRAM or 16 GB RAM with 4+ CPU cores. Check with `LanguageModel.availability()`; the first-run download needs a click (user activation) on the Settings page, with a progress bar.
+- **Throughput:** Gemini Nano is slow (a few seconds per item), so the backfill runs in the background queue at about 1 item at a time while the browser is idle. 5,000 bookmarks take hours, not minutes, but cost $0. Keyword, vector and color search work immediately; enrichment only improves them.
+- **Fallbacks when Gemini Nano isn't available:** search still works via keywords + embeddings + colors (no tags/summaries). Settings offer a Claude key as an opt-in upgrade.
+- **Not the default:** free cloud tiers such as the Gemini API free tier. They're rate-limited, and Google may use free-tier prompts to improve its products, which conflicts with keeping bookmarks private. Could be added later as an opt-in provider.
+- The Claude-specific parts below (Batches, prompt caching, spend cap) apply only when the user turns Claude on.
 
 ## Data model (Dexie)
 - **`items`** — one row per canonical URL.
@@ -159,8 +177,8 @@ test/fixtures/{x,instagram,linkedin,pages}/  recorded, sanitized JSON/HTML
    - Recon: record and sanitize fixtures.
    - MAIN-world hook, passive capture, ingest on the bookmarks page.
    - Opt-in auto-sync, `sourceState`, Sources/health page.
-3. **Engine and enrichment:** offscreen engine, persistent queue, page fetch with the optional permission, thumbnails, color buckets (the color filter goes live here), Haiku enrichment with Batches, settings, spend cap.
-4. **Smart search:** bundled embeddings with RRF, Claude planner and rerank, golden-set evaluation.
+3. **Engine and enrichment:** offscreen engine, persistent queue, page fetch with the optional permission, thumbnails, color buckets (the color filter goes live here), `AiProvider` with Gemini Nano as the default enricher (availability check, model download from Settings), settings.
+4. **Smart search:** bundled embeddings with RRF, Gemini Nano query rewrites, golden-set evaluation. Optional Claude provider (enrichment with Batches, planner, rerank, spend cap) for users who add a key.
 5. **Instagram, then LinkedIn,** on the same adapter contract.
 6. **Hardening:** weekly full reconcile, `missingSince` handling, JSON export/import, onboarding polish, performance pass at 10k items.
 
