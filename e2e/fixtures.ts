@@ -3,11 +3,12 @@ import path from 'node:path';
 
 const extensionPath = path.resolve('.output/chrome-mv3');
 
-export const test = base.extend<{ context: BrowserContext; sw: Worker; extensionId: string }>({
-  context: async ({}, use) => {
+export const test = base.extend<{ extensionDir: string; context: BrowserContext; sw: Worker; extensionId: string }>({
+  extensionDir: [extensionPath, { option: true }],
+  context: async ({ extensionDir }, use) => {
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
-      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+      args: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`],
     });
     await use(context);
     await context.close();

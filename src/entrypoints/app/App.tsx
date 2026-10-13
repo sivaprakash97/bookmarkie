@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { restoreFromTrash, type Candidate } from '@/core/cleanup';
 import { SOURCES, type Source } from '@/core/types';
 import { CleanupPanel } from './CleanupPanel';
@@ -15,11 +15,28 @@ interface Toast {
   trashIds: number[];
 }
 
+const justUpdated = new URLSearchParams(location.search).has('updated');
+
+/** Lets the background reload Bookmarkie as soon as a newer build is on disk. */
+function askForUpdateCheck() {
+  void browser.runtime.sendMessage({ type: 'check-update' }).catch(() => undefined);
+}
+
 export function App() {
   const { loaded, items, index, sourceStates } = useLibrary();
   const [view, setView] = useState<View>('search');
   const [review, setReview] = useState<{ candidates: Candidate[]; from: View } | null>(null);
-  const [toast, setToast] = useState<Toast | null>(null);
+  const [toast, setToast] = useState<Toast | null>(
+    justUpdated ? { text: 'Bookmarkie was updated to the latest version.', trashIds: [] } : null,
+  );
+
+  useEffect(() => {
+    if (justUpdated) history.replaceState(null, '', location.pathname);
+    askForUpdateCheck();
+    const onVisible = () => document.visibilityState === 'visible' && askForUpdateCheck();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
   const [resetKey, setResetKey] = useState(0);
 
   const counts = useMemo(() => {

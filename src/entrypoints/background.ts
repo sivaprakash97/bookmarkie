@@ -1,5 +1,6 @@
 import { canonicalize, isWebUrl } from '@/core/canonical';
 import { purgeTrash } from '@/core/cleanup';
+import { reloadIfRebuilt, takeReopenRequest } from '@/core/selfUpdate';
 import { db } from '@/core/db';
 import { parseQuery } from '@/core/queryParse';
 import { LexicalIndex } from '@/core/search/lexical';
@@ -7,6 +8,7 @@ import { syncChromeBookmarks, syncReadingList } from '@/core/sync';
 
 const APP_PATH = '/app.html';
 const RECONCILE_ALARM = 'reconcile';
+const UPDATE_ALARM = 'update-check';
 const IMPORTING_KEY = 'chromeImporting';
 
 export default defineBackground(() => {
@@ -60,7 +62,21 @@ export default defineBackground(() => {
   browser.alarms.get(RECONCILE_ALARM).then((a) => {
     if (!a) void browser.alarms.create(RECONCILE_ALARM, { periodInMinutes: 360 });
   });
+  // ---- Self-update for the folder-loaded copy (see core/selfUpdate.ts). ----
+  const checkForUpdate = () => reloadIfRebuilt(isAppOpen);
+  browser.alarms.get(UPDATE_ALARM).then((a) => {
+    if (!a) void browser.alarms.create(UPDATE_ALARM, { periodInMinutes: 1 });
+  });
+  browser.runtime.onMessage.addListener((msg: unknown, sender) => {
+    if (sender.id !== browser.runtime.id) return;
+    if ((msg as { type?: string })?.type === 'check-update') void checkForUpdate();
+  });
+  void takeReopenRequest().then((reopen) => {
+    if (reopen) void openApp(undefined, true);
+  });
+
   browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === UPDATE_ALARM) void checkForUpdate();
     if (alarm.name !== RECONCILE_ALARM) return;
     syncAll();
     // Bookmarks deleted in Clean up can be restored for 30 days, then they go for good.
@@ -101,9 +117,15 @@ export default defineBackground(() => {
   });
 });
 
-async function openApp(query?: string): Promise<void> {
+async function isAppOpen(): Promise<boolean> {
   const base = browser.runtime.getURL(APP_PATH);
-  const url = query ? `${base}?q=${encodeURIComponent(query)}` : base;
+  const contexts = await browser.runtime.getContexts({ contextTypes: [browser.runtime.ContextType.TAB] });
+  return contexts.some((c) => c.documentUrl?.startsWith(base));
+}
+
+async function openApp(query?: string, updated = false): Promise<void> {
+  const base = browser.runtime.getURL(APP_PATH);
+  const url = query ? `${base}?q=${encodeURIComponent(query)}` : updated ? `${base}?updated=1` : base;
   // getContexts sees our own pages without needing the "tabs" permission.
   const contexts = await browser.runtime.getContexts({ contextTypes: [browser.runtime.ContextType.TAB] });
   const existing = contexts.find((c) => c.documentUrl?.startsWith(base));

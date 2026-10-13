@@ -1,8 +1,21 @@
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { defineConfig } from 'wxt';
+
+// Baked into the code and written to build.json, so a running copy can tell
+// when the folder holds a newer build and reload itself (see core/selfUpdate.ts).
+const BUILD_ID = Date.now().toString(36);
 
 export default defineConfig({
   srcDir: 'src',
   modules: ['@wxt-dev/module-react'],
+  vite: () => ({ define: { __BUILD_ID__: JSON.stringify(BUILD_ID) } }),
+  hooks: {
+    // Written last, so a half-finished build never looks like a new version.
+    'build:done': async (wxt) => {
+      await writeFile(path.join(wxt.config.outDir, 'build.json'), JSON.stringify({ id: BUILD_ID }));
+    },
+  },
   manifest: {
     name: 'Bookmarkie',
     description:

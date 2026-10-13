@@ -61,9 +61,32 @@ Nothing is ever deleted without you seeing it first. Every route ends on a **Rev
 
 ## Updating
 
-1. Download the new code and replace the files **in the same folder** you loaded into Chrome. Chrome identifies an unpacked extension by its folder, so keep the folder name and location.
-2. In that folder run `npm install`, then `npm run build`.
-3. Open `chrome://extensions` and click the reload ↻ icon on Bookmarkie.
+### One-time setup
+This links your Bookmarkie folder to GitHub so updates can download themselves.
+
+1. Open Terminal.
+2. Type `cd` and a space, drag your `bookmarkie` folder into the window, and press Enter.
+3. Paste these lines and press Enter:
+
+```bash
+git init -q
+git remote add origin https://github.com/sivaprakash97/bookmarkie.git
+git fetch origin claude/intelligent-carson-7r80tn
+git checkout -f -B claude/intelligent-carson-7r80tn origin/claude/intelligent-carson-7r80tn
+```
+
+If your Mac asks to install "command line developer tools", click **Install**, wait for it to finish, then paste the lines again.
+
+4. Double-click **Update Bookmarkie** in the folder. If macOS asks whether Terminal may access the folder, click **Allow**.
+5. This first time only, open `chrome://extensions` and click the reload ↻ icon on Bookmarkie. Older versions can't reload themselves; from now on it happens automatically.
+
+### Every update after that
+Double-click **Update Bookmarkie** in the `bookmarkie` folder.
+- It downloads the latest version, installs it and builds it.
+- Bookmarkie then reloads itself in Chrome within a minute, or straight away when you open it. Keep Developer mode on in `chrome://extensions`.
+- Your bookmarks and Bookmarkie's data are kept.
+
+The updater makes the folder match GitHub, so don't keep your own files or edits inside the `bookmarkie` folder.
 
 ## Development
 
