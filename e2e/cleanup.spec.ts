@@ -149,6 +149,7 @@ test('not about my topics, with the real on-device model', async ({ context, sw,
   await expect(page.getByRole('button', { name: /^Review \d+ bookmarks? →$/ })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('button', { name: /^Review \d+ bookmarks? →$/ }).click();
 
+  await expect(page.locator('.review-list li')).toHaveCount(4);
   const titles = await page.locator('.review-list .title-text').allTextContents();
   expect(titles.sort()).toEqual(['Calculus lecture notes', 'Cheap flights to Goa', 'IPL 2018 live score', 'Pasta carbonara recipe']);
   await expect(page.locator('.review-list li').first()).toContainText('Not about your topics');
