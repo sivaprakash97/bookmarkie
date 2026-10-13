@@ -205,3 +205,10 @@ The user wants to avoid paying for AI. Every AI step goes through one `AiProvide
 - `entrypoints/engine.ts`
 - `src/adapters/x/` (with `entrypoints/x-hook.content.ts`)
 - `src/core/search/`
+
+## Clean up (built after milestone 1, at the user's request)
+The user wanted to delete years of old Chrome bookmarks. A **Clean up** tab finds candidates four ways: select from search results, "not about my topics" (on-device all-MiniLM-L6-v2 embeddings via Transformers.js, pulled forward from milestone 4), dead links (optional `<all_urls>` permission), and duplicates.
+- Every route ends on a **Review** screen listing each bookmark with its reason. Only that screen's button deletes.
+- Deleted bookmarks go to a 30-day trash with Undo (restored into the original folder and position).
+- A backup file is offered before the first deletion.
+- Code: `src/core/{cleanup,linkCheck,embed,topics}.ts`, `src/entrypoints/app/{CleanupPanel,ReviewScreen,SearchView}.tsx`, `embed.worker.ts`, `scripts/prepare-assets.mjs`.

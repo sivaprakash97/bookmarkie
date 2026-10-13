@@ -1,4 +1,5 @@
 import { canonicalize, isWebUrl } from '@/core/canonical';
+import { purgeTrash } from '@/core/cleanup';
 import { db } from '@/core/db';
 import { parseQuery } from '@/core/queryParse';
 import { LexicalIndex } from '@/core/search/lexical';
@@ -60,7 +61,10 @@ export default defineBackground(() => {
     if (!a) void browser.alarms.create(RECONCILE_ALARM, { periodInMinutes: 360 });
   });
   browser.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === RECONCILE_ALARM) syncAll();
+    if (alarm.name !== RECONCILE_ALARM) return;
+    syncAll();
+    // Bookmarks deleted in Clean up can be restored for 30 days, then they go for good.
+    void purgeTrash();
   });
 
   // ---- Ways in: toolbar icon / Alt+Shift+B, and "bm <query>" in the address bar. ----

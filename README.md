@@ -8,6 +8,7 @@ Bookmarkie is a Chrome extension with a full-page search app. It collects your b
 | --- | --- |
 | Chrome bookmarks | ✅ Synced live: adds, edits, moves and deletes show up within a second, including bookmarks synced from your phone |
 | Chrome Reading List | ✅ Synced live |
+| Clean up old bookmarks | ✅ Remove by search, by topic (free on-device AI), dead links and duplicates, with review and undo |
 | X / Twitter | 🔜 Next milestone |
 | LinkedIn, Instagram | 🗓 Planned |
 | Smart search with free on-device AI (Chrome's built-in Gemini Nano), color search | 🗓 Planned. Claude is an optional upgrade if you add your own key |
@@ -20,6 +21,8 @@ See [`docs/PLAN.md`](docs/PLAN.md) for the full design and roadmap.
 npm install
 npm run build
 ```
+
+`npm install` also downloads the small AI model used by Clean up (about 23 MB, once), so be online for it.
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and pick the `.output/chrome-mv3` folder.
@@ -40,6 +43,28 @@ npm run build
 
 All data stays in your browser (IndexedDB). Nothing is sent anywhere.
 
+## Cleaning up old bookmarks
+
+Nothing is ever deleted without you seeing it first. Every route ends on a **Review** screen that lists each bookmark with the reason it's there. You can untick anything, open a page to check it, or download the list as a spreadsheet. Only the button at the bottom of that screen deletes.
+
+- **From a search:** click **Select**, search (e.g. `before 2020`), click **Select all**, then **Review & remove**.
+- **Not about my topics:** in **Clean up**, type the topics you want to keep (e.g. `design, typography`) and click **Find unrelated bookmarks**.
+  - An AI model running on your computer compares each bookmark's title and address with your topics. It's free and nothing leaves your computer.
+  - Use the **Strictness** slider to flag more or fewer.
+  - Bookmarks on known design sites, or in folders named after your topics, are always kept.
+- **Dead links:** Chrome asks once for permission to visit the pages. Then Bookmarkie lists pages that no longer exist. Pages that block the check are listed separately and start unticked.
+- **Duplicates:** links bookmarked more than once. The oldest copy is kept.
+
+**Safety net:**
+- You're offered a backup file (importable into any browser) before your first deletion.
+- Deleted bookmarks stay under **Clean up → Recently removed** for 30 days. **Undo** puts them back in their original folder. Chrome resets their "date added" when they come back.
+
+## Updating
+
+1. Download the new code and replace the files **in the same folder** you loaded into Chrome. Chrome identifies an unpacked extension by its folder, so keep the folder name and location.
+2. In that folder run `npm install`, then `npm run build`.
+3. Open `chrome://extensions` and click the reload ↻ icon on Bookmarkie.
+
 ## Development
 
 ```bash
@@ -57,9 +82,14 @@ src/core/                  shared logic, no UI
   ingest.ts                the single write path every source uses (items + per-source saves)
   queryParse.ts            pulls source / date / color filters out of a query
   search/lexical.ts        MiniSearch index, filters, ranking
+  cleanup.ts               delete with trash + undo, duplicates, backup export
+  linkCheck.ts             dead-link checks
+  embed.ts, topics.ts      on-device embeddings and topic scoring
   chromeSource.ts, sync.ts Chrome bookmarks + Reading List sync
 src/entrypoints/
   background.ts            service worker: sync listeners, alarm, toolbar, omnibox
-  app/                     React search app
+  app/                     React app (search, clean up, review, sources)
+  app/embed.worker.ts      runs the AI model (Transformers.js, bundled ONNX runtime) off the main thread
+scripts/prepare-assets.mjs puts the model and ONNX runtime into public/ (run automatically)
 e2e/                       Playwright tests that load the built extension
 ```

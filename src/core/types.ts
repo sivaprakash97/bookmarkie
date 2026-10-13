@@ -61,6 +61,42 @@ export interface Item {
   summary?: string;
   searchPhrases?: string[];
   enrich: { status: EnrichStatus; attempts: number };
+  /** Result of the dead-link check in Clean up. */
+  linkCheck?: LinkCheck;
+}
+
+export type LinkStatus = 'ok' | 'dead' | 'unsure';
+
+export interface LinkCheck {
+  status: LinkStatus;
+  /** HTTP status, absent when the site couldn't be reached at all. */
+  code?: number;
+  checkedAt: number;
+}
+
+/** A bookmark deleted from Chrome by Bookmarkie, kept 30 days so it can be restored. */
+export interface TrashEntry {
+  id?: number;
+  deletedAt: number;
+  source: 'chrome' | 'readinglist';
+  sourceId: string;
+  itemId: number;
+  url: string;
+  title: string;
+  folderPath?: string;
+  /** Where it lived in Chrome, to put it back in the same place. */
+  parentId?: string;
+  index?: number;
+  dateAdded?: number;
+  reason: string;
+}
+
+export interface VectorRow {
+  itemId: number;
+  model: string;
+  /** Hash of the text that was embedded, so edits trigger a re-embed. */
+  textHash: string;
+  vec: Float32Array;
 }
 
 export type SourceStatus = 'ok' | 'stale' | 'broken' | 'needs-login' | 'paused' | 'off';

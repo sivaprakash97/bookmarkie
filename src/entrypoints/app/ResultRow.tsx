@@ -8,9 +8,12 @@ interface Props {
   selected: boolean;
   onHover: () => void;
   onOpen: (item: Item, background?: boolean) => void;
+  /** Present in selection mode: whether this row is ticked for removal. */
+  checked?: boolean;
+  onCheck?: () => void;
 }
 
-export function ResultRow({ hit, selected, onHover, onOpen }: Props) {
+export function ResultRow({ hit, selected, onHover, onOpen, checked, onCheck }: Props) {
   const { item } = hit;
   const openable = isOpenable(item.url);
   const removedFrom = [...new Set(item.saveRefs.filter((r) => r.removed).map((r) => r.source))].filter(
@@ -25,7 +28,13 @@ export function ResultRow({ hit, selected, onHover, onOpen }: Props) {
   };
 
   return (
-    <li className={`row${item.removed ? ' removed' : ''}`} aria-selected={selected} onMouseMove={onHover}>
+    <li className={`row${item.removed ? ' removed' : ''}${checked ? ' checked' : ''}`} aria-selected={selected}
+      onMouseMove={onHover}>
+      {onCheck && (
+        <input type="checkbox" className="row-check" checked={!!checked} onChange={onCheck}
+          disabled={!canDelete(item)} title={canDelete(item) ? undefined : 'Only Chrome bookmarks can be removed for now'}
+          aria-label={`Select ${item.title}`} />
+      )}
       <img className="favicon" src={faviconUrl(item.url)} alt="" width={16} height={16} loading="lazy" />
       <div className="row-body">
         <a className="title" href={openable ? item.url : undefined} target="_blank" rel="noopener noreferrer"
@@ -50,4 +59,9 @@ export function ResultRow({ hit, selected, onHover, onOpen }: Props) {
       </div>
     </li>
   );
+}
+
+/** Chrome and Reading List saves are the only ones Bookmarkie can delete for now. */
+export function canDelete(item: Item): boolean {
+  return !item.removed && item.sources.some((s) => s === 'chrome' || s === 'readinglist');
 }
